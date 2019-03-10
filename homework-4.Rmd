@@ -9,13 +9,47 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r libs, include=FALSE}
+library(tidyverse)
+library(broom)
+library(glmnet)
+library(caret)
+library(ISLR)
+library(janitor)
+library(stringr)
+library(rsample)
+library(caret)
+library(MASS)
+library(randomForest)
+library(ISLR)
+library(tree)
+library(gbm)
+```
+
 ## Problem 1
 
 Problem 7 from Chapter 8 in the text. To be specific, please use a sequence of
 `ntree` from 25 to 500 in steps of 25 and `mtry` from 3 to 9 for by 1. 
 
-## Answer 1
+In the lab, we applied random forests to the Boston data using mtry=6 and using ntree=25 and ntree=500. Create a plot displaying the test error resulting from random forests on this data set for a more comprehensive range of values for mtry and ntree. You can model your
+plot after Figure 8.10. Describe the results obtained.
 
+## Answer 1
+```{r}
+set.seed(1)
+train <- sample(1:nrow(Boston), nrow(Boston) / 2)
+Boston.train <- Boston[train, -14]
+Boston.test <- Boston[-train, -14]
+Y.train <- Boston[train, 14]
+Y.test <- Boston[-train, 14]
+rf.boston1 <- randomForest(Boston.train, y = Y.train, xtest = Boston.test, ytest = Y.test, mtry = ncol(Boston) - 1, ntree = 500)
+rf.boston2 <- randomForest(Boston.train, y = Y.train, xtest = Boston.test, ytest = Y.test, mtry = (ncol(Boston) - 1) / 2, ntree = 500)
+rf.boston3 <- randomForest(Boston.train, y = Y.train, xtest = Boston.test, ytest = Y.test, mtry = sqrt(ncol(Boston) - 1), ntree = 500)
+plot(1:500, rf.boston1$test$mse, col = "green", type = "l", xlab = "Number of Trees", ylab = "Test MSE", ylim = c(10, 19))
+lines(1:500, rf.boston2$test$mse, col = "red", type = "l")
+lines(1:500, rf.boston3$test$mse, col = "blue", type = "l")
+legend("topright", c("m = p", "m = p/2", "m = sqrt(p)"), col = c("green", "red", "blue"), cex = 1, lty = 1)
+```
 ## Problem 2
 
 Problem 8 from Chapter 8 in the text. Set your seed with 9823 and split into 
@@ -27,3 +61,74 @@ test MSE.
 2. Fit a multiple regression model to the training data and report the 
 estimated test MSE
 3. Summarize your results. 
+
+##Answer 2
+
+####Part a
+```{r}
+set.seed(9823)
+train <- sample(1:nrow(Carseats), nrow(Carseats), nrow(Carseats)/2)
+train_carseats <- Carseats[train, ]
+test_carseats <- Carseats[-train, ]
+```
+
+####Part b
+```{r}
+#Regression Tree
+carseats_tree <- tree(Sales ~ ., data = train_carseats)
+summary(carseats_tree)
+
+plot(carseats_tree)
+text(carseats_tree, pretty = 0)
+
+pred_carseats <- predict(carseats_tree, newdata = test_carseats)
+test_sales <- Carseats[-train, "Sales"]
+mean((pred_carseats-test_sales)^2)
+```
+
+```{r}
+#Gradient-Boosted Tree
+train_carseats_gbm <- gbm(Sales ~ . ,data = train_carseats, distribution = "gaussian", n.trees = 5000, interaction.depth = 4)
+
+summary(train_carseats_gbm)
+
+par(mfrow = c(1,2))
+plot(train_carseats_gbm, i = "Price")
+plot(train_carseats_gbm, i = "ShelveLoc")
+
+test_gbm_pred <- predict(train_carseats_gbm, newdata = test_carseats, n.trees = 5000)
+mean((test_gbm_pred-test_sales)^2)
+
+```
+
+####Part c
+```{r}
+croVal_carseats <- cv.tree(carseats_tree)
+plot(croVal_carseats$size, croVal_carseats$dev, type = "b")
+tree_min <- which.min(croVal_carseats$dev)
+
+carseat_prune <- prune.tree(carseats_tree, best = 5)
+plot(carseat_prune)
+text(carseat_prune,pretty = 0)
+
+predict_carseats <- predict(carseats_tree, newdata = test_carseats)
+plot(predict_carseats, test_sales)
+abline(0, 1)
+mean((predict_carseats-test_sales)^2)
+```
+
+####Part d
+```{r}
+carseats_bag <- randomForest(Sales ~ ., data = train_carseats, mtry = 10, ntree = 25, importance = TRUE)
+predict_bag <- predict(carseats_bag, newdata = test_carseats)
+mean((predict_bag-test_sales)^2)
+importance(carseats_bag)
+```
+
+####Part e
+```{r}
+carseats_RF <- randomForest(Sales ~ ., data = train_carseats, mtry = 3, importance = TRUE)
+predict_RF <- predict(carseats_RF, newdata = test_carseats)
+mean((predict_RF - test_sales)^2)
+importance(carseats_RF)
+```
