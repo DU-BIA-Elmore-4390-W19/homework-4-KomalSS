@@ -51,9 +51,25 @@ for (k in 1:20){
   for(i in 1:7){
     cat(sprintf('Trial: %s, mtry: %s --- %s\n', k, mtry[i], Sys.time()))
     for(j in 1:20){ 
-      rf_train <- randomForest(medv ~ .,
+      rf_train1 <- randomForest(medv ~ .,
                                data = train_boston,
                                mtry = mtry[i],
+                               ntree = ntree[j])
+      mse <- mean((predict(rf_train, newdata = test_boston) - test_boston$medv)^2)
+      results[(i-1)*20 + j, ] <- c(k, mtry[i], ntree[j], mse)
+      
+      for(j in 1:20){ 
+      rf_train2 <- randomForest(medv ~ .,
+                               data = train_boston,
+                               mtry = (mtry[i] - 1)/2,
+                               ntree = ntree[j])
+      mse <- mean((predict(rf_train, newdata = test_boston) - test_boston$medv)^2)
+      results[(i-1)*20 + j, ] <- c(k, mtry[i], ntree[j], mse)
+      
+      for(j in 1:20){ 
+      rf_train3 <- randomForest(medv ~ .,
+                               data = train_boston,
+                               mtry = sqrt(mtry[i] - 1),
                                ntree = ntree[j])
       mse <- mean((predict(rf_train, newdata = test_boston) - test_boston$medv)^2)
       results[(i-1)*20 + j, ] <- c(k, mtry[i], ntree[j], mse)
@@ -66,7 +82,13 @@ for (k in 1:20){
   results_total <- results
   )
 }
+
+plot(1:500, rf_train1$mse, col = "green", type = "l", xlab = "Number of Trees", ylab = "Test MSE", ylim = c(10, 19))
+lines(1:500, rf_boston2$test$mse, col = "red", type = "l")
+lines(1:500, rf_boston3$test$mse, col = "blue", type = "l")
+legend("topright", c("m = p", "m = p/2", "m = sqrt(p)"), col = c("green", "red", "blue"), cex = 1, lty = 1)
 ```
+As you can see from the plot the Test MSE for the sqrt of the predictors is higher than that of all predictors and half of the predictors.
 ## Problem 2
 
 Problem 8 from Chapter 8 in the text. Set your seed with 9823 and split into 
@@ -150,3 +172,4 @@ test_gbm_pred <- predict(train_carseats_gbm, newdata = test_carseats, n.trees = 
 mean((test_gbm_pred-test_sales)^2)
 
 ```
+Summary: Of all the models ran here, the boosted-gradient model has the lowest MSE.
