@@ -38,7 +38,7 @@ plot after Figure 8.10. Describe the results obtained.
 ## Answer 1
 ```{r}
 set.seed(1234)
-?randomForest
+
 for (k in 1:20){
   inTraining <- createDataPartition(Boston$medv, p = .75, list = F)
   train_boston <- Boston[inTraining, ]
@@ -70,10 +70,11 @@ for (k in 1:20){
 }
 
 
-plot(1:500, rf_train1$mse, type = "l", xlab = "Number of Trees", ylab = "Test MSE", ylim = c(10, 19))
+results$mtry <- as.factor(results$mtry)
+ggplot(results, aes(x=ntree, y=mse, group=mtry, colour=mtry)) + geom_line()
 ```
 
-As you can see from the plot the Test MSE decreases as the number of trees increase.
+As you can see from the plot the Test MSE for mtry of 3 is higher than the others where as Test MSE of 6 or 7 is the lowest of them all.
 
 ## Problem 2
 
